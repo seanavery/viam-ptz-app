@@ -124,6 +124,58 @@ async function main() {
       }
     }
     
+    // Zoom command implementations
+    async function onZoomPress(direction) {
+      console.log(`Zoom ${direction} pressed - starting zoom`);
+      try {
+        let command;
+        switch(direction) {
+          case 'in':
+            command = VIAM.Struct.fromJson({
+              "command": "continuous-move",
+              "pan_speed": 0.0,
+              "tilt_speed": 0.0,
+              "zoom_speed": 0.5
+            });
+            break;
+          case 'out':
+            command = VIAM.Struct.fromJson({
+              "command": "continuous-move",
+              "pan_speed": 0.0,
+              "tilt_speed": 0.0,
+              "zoom_speed": -0.5
+            });
+            break;
+        }
+        
+        console.log(`Sending zoom ${direction} command:`, command);
+        const result = await ptzClient.doCommand(command);
+        console.log(`Zoom ${direction} command sent:`, result);
+        
+      } catch (error) {
+        console.error(`Error sending zoom ${direction} command:`, error);
+      }
+    }
+    
+    async function onZoomRelease(direction) {
+      console.log(`Zoom ${direction} released - stopping zoom`);
+      try {
+        const stopCommand = VIAM.Struct.fromJson({
+          "command": "stop",
+          "pan_tilt": true,
+          "zoom": true
+        });
+        
+        console.log("Sending zoom stop command as Struct:", stopCommand);
+        
+        const result = await ptzClient.doCommand(stopCommand);
+        console.log(`Zoom stop command sent:`, result);
+        
+      } catch (error) {
+        console.error(`Error sending zoom stop command:`, error);
+      }
+    }
+    
     // Create arrow buttons
     function createArrowButton(direction, position) {
       const button = document.createElement('button');
@@ -174,6 +226,57 @@ async function main() {
       return button;
     }
     
+    // Create zoom buttons
+    function createZoomButton(direction, position, symbol) {
+      const button = document.createElement('button');
+      button.innerHTML = symbol;
+      button.style.position = 'absolute';
+      button.style.background = 'rgba(0, 0, 0, 0.7)';
+      button.style.color = 'white';
+      button.style.border = '2px solid rgba(255, 255, 255, 0.8)';
+      button.style.borderRadius = '50%';
+      button.style.width = '50px';
+      button.style.height = '50px';
+      button.style.fontSize = '20px';
+      button.style.cursor = 'pointer';
+      button.style.pointerEvents = 'auto';
+      button.style.userSelect = 'none';
+      button.style.display = 'flex';
+      button.style.alignItems = 'center';
+      button.style.justifyContent = 'center';
+      button.style.fontWeight = 'bold';
+      
+      // Position the button
+      Object.assign(button.style, position);
+      
+      // Add press/release event handlers
+      button.addEventListener('mousedown', () => onZoomPress(direction));
+      button.addEventListener('mouseup', () => onZoomRelease(direction));
+      button.addEventListener('mouseleave', () => onZoomRelease(direction));
+      
+      // Touch events for mobile
+      button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        onZoomPress(direction);
+      });
+      button.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        onZoomRelease(direction);
+      });
+      
+      // Hover effects
+      button.addEventListener('mouseenter', () => {
+        button.style.background = 'rgba(0, 0, 0, 0.9)';
+        button.style.borderColor = 'rgba(255, 255, 255, 1)';
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.background = 'rgba(0, 0, 0, 0.7)';
+        button.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+      });
+      
+      return button;
+    }
+    
     function getArrowSymbol(direction) {
       const symbols = {
         up: '▲',
@@ -209,11 +312,24 @@ async function main() {
       transform: 'translateY(-50%)'
     });
     
+    // Create and position zoom buttons in lower-right corner
+    const zoomInButton = createZoomButton('in', {
+      bottom: '80px',
+      right: '20px'
+    }, '+');
+    
+    const zoomOutButton = createZoomButton('out', {
+      bottom: '20px',
+      right: '20px'
+    }, '−');
+    
     // Add buttons to overlay
     controlsOverlay.appendChild(upButton);
     controlsOverlay.appendChild(downButton);
     controlsOverlay.appendChild(leftButton);
     controlsOverlay.appendChild(rightButton);
+    controlsOverlay.appendChild(zoomInButton);
+    controlsOverlay.appendChild(zoomOutButton);
     
     let currentBlobUrl = null;
     
