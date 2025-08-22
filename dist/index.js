@@ -29,6 +29,8 @@ async function main() {
   try {
     const flirClient = new VIAM.CameraClient(machine, 'FLIRSystems-M364C-TA0RFP6-url0');
     console.log("Camera client created:", flirClient);
+
+    const ptzClient = new VIAM.GenericComponentClient(machine, 'ptz-1');
     
     // Create container for image and controls
     const container = document.createElement('div');
@@ -54,15 +56,72 @@ async function main() {
     controlsOverlay.style.pointerEvents = 'none'; // Allow clicks to pass through except on buttons
     container.appendChild(controlsOverlay);
     
-    // PTZ command stubs
+    // PTZ command implementations
     async function onPtzPress(direction) {
       console.log(`PTZ ${direction} pressed - starting movement`);
-      // TODO: Send PTZ command to start movement in direction
+      try {
+        let command;
+        switch(direction) {
+          case 'up':
+            command = VIAM.Struct.fromJson({
+              "command": "continuous-move",
+              "pan_speed": 0.0,
+              "tilt_speed": 0.5,
+              "zoom_speed": 0.0
+            });
+            break;
+          case 'down':
+            command = VIAM.Struct.fromJson({
+              "command": "continuous-move", 
+              "pan_speed": 0.0,
+              "tilt_speed": -0.5,
+              "zoom_speed": 0.0
+            });
+            break;
+          case 'left':
+            command = VIAM.Struct.fromJson({
+              "command": "continuous-move",
+              "pan_speed": -0.5,
+              "tilt_speed": 0.0,
+              "zoom_speed": 0.0
+            });
+            break;
+          case 'right':
+            command = VIAM.Struct.fromJson({
+              "command": "continuous-move",
+              "pan_speed": 0.5,
+              "tilt_speed": 0.0,
+              "zoom_speed": 0.0
+            });
+            break;
+        }
+        
+        console.log(`Sending ${direction} command:`, command);
+        const result = await ptzClient.doCommand(command);
+        console.log(`PTZ ${direction} command sent:`, result);
+        
+      } catch (error) {
+        console.error(`Error sending PTZ ${direction} command:`, error);
+      }
     }
     
     async function onPtzRelease(direction) {
       console.log(`PTZ ${direction} released - stopping movement`);
-      // TODO: Send PTZ command to stop movement
+      try {
+        const stopCommand = VIAM.Struct.fromJson({
+          "command": "stop",
+          "pan_tilt": true,
+          "zoom": true
+        });
+        
+        console.log("Sending stop command as Struct:", stopCommand);
+        
+        const result = await ptzClient.doCommand(stopCommand);
+        console.log(`PTZ stop command sent:`, result);
+        
+      } catch (error) {
+        console.error(`Error sending PTZ stop command:`, error);
+      }
     }
     
     // Create arrow buttons
