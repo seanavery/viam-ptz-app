@@ -24,13 +24,86 @@ async function main() {
   console.log("Robot client created:", machine);
   
   console.log('Resources:');
-  console.log(await machine.resourceNames());
+  const resources = await machine.resourceNames();
+  console.log(resources);
   
+  // Show resource selection form
+  showResourceSelectionForm(machine, resources);
+}
+
+function showResourceSelectionForm(machine, resources) {
+  // Create form container
+  const formContainer = document.createElement('div');
+  formContainer.style.padding = '20px';
+
+  const title = document.createElement('h3');
+  title.textContent = 'Select Resources';
+  formContainer.appendChild(title);
+
+  // Filter resources
+  const cameras = resources.filter(r => r.type === 'component' && r.subtype === 'camera');
+  const generics = resources.filter(r => r.type === 'component' && r.subtype === 'generic');
+
+  // Camera dropdown
+  const cameraLabel = document.createElement('label');
+  cameraLabel.textContent = 'Camera: ';
+  formContainer.appendChild(cameraLabel);
+
+  const cameraSelect = document.createElement('select');
+  cameras.forEach(camera => {
+    const option = document.createElement('option');
+    option.value = camera.name;
+    option.textContent = camera.name;
+    cameraSelect.appendChild(option);
+  });
+  formContainer.appendChild(cameraSelect);
+  formContainer.appendChild(document.createElement('br'));
+  formContainer.appendChild(document.createElement('br'));
+
+  // PTZ dropdown
+  const ptzLabel = document.createElement('label');
+  ptzLabel.textContent = 'PTZ: ';
+  formContainer.appendChild(ptzLabel);
+
+  const ptzSelect = document.createElement('select');
+  generics.forEach(generic => {
+    const option = document.createElement('option');
+    option.value = generic.name;
+    option.textContent = generic.name;
+    ptzSelect.appendChild(option);
+  });
+  formContainer.appendChild(ptzSelect);
+  formContainer.appendChild(document.createElement('br'));
+  formContainer.appendChild(document.createElement('br'));
+
+  // Submit button
+  const submitButton = document.createElement('button');
+  submitButton.textContent = 'Start';
+
+  submitButton.addEventListener('click', () => {
+    const selectedCamera = cameraSelect.value;
+    const selectedPtz = ptzSelect.value;
+
+    if (!selectedCamera || !selectedPtz) {
+      alert('Please select both a camera and PTZ controller');
+      return;
+    }
+
+    // Remove form and start PTZ app
+    document.body.removeChild(formContainer);
+    startPtzApp(machine, selectedCamera, selectedPtz);
+  });
+
+  formContainer.appendChild(submitButton);
+  document.body.appendChild(formContainer);
+}
+
+async function startPtzApp(machine, cameraName, ptzName) {
   try {
-    const flirClient = new VIAM.CameraClient(machine, 'FLIRSystems-M364C-TA0RFP6-url0');
+    const flirClient = new VIAM.CameraClient(machine, cameraName);
     console.log("Camera client created:", flirClient);
 
-    const ptzClient = new VIAM.GenericComponentClient(machine, 'ptz-1');
+    const ptzClient = new VIAM.GenericComponentClient(machine, ptzName);
     
     // Create container for image and controls
     const container = document.createElement('div');
@@ -333,7 +406,6 @@ async function main() {
     
     let currentBlobUrl = null;
     
-    // Function to update the image
     async function updateImage() {
       try {
         console.log("Getting new frame from camera...");
@@ -356,7 +428,6 @@ async function main() {
     console.log("Starting continuous image updates...");
     // Fill first image immediately
     updateImage();
-    
     // Update image every second
     const intervalId = setInterval(updateImage, 1000);
     
