@@ -29,24 +29,40 @@ async function main() {
   try {
     const flirClient = new VIAM.CameraClient(machine, 'FLIRSystems-M364C-TA0RFP6-url0');
     console.log("Camera client created:", flirClient);
-    console.log("getting image from camera...");
     
-    const frameData = await flirClient.renderFrame();
-    console.log('FLIRSystems-M364C-TA0RFP6-url0 renderFrame return value:', frameData);
-    console.log('frameData type:', typeof frameData);
-    console.log('frameData constructor:', frameData?.constructor?.name);
-    
-    // Handle Blob data from renderFrame
     const img = document.createElement('img');
-    const blobUrl = URL.createObjectURL(frameData);
-    img.src = blobUrl;
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
     document.body.appendChild(img);
-    console.log("Image displayed on page using renderFrame Blob.");
-      
-    // Clean up the blob URL after the image loads to free memory
-    img.onload = () => {
-      URL.revokeObjectURL(blobUrl);
-    };
+    
+    let currentBlobUrl = null;
+    
+    // Function to update the image
+    async function updateImage() {
+      try {
+        console.log("Getting new frame from camera...");
+        const frameData = await flirClient.renderFrame();
+        
+        // Clean up previous blob URL to prevent memory leaks
+        if (currentBlobUrl) {
+          URL.revokeObjectURL(currentBlobUrl);
+        }
+        
+        // Create new blob URL and update image
+        currentBlobUrl = URL.createObjectURL(frameData);
+        img.src = currentBlobUrl;
+        
+      } catch (error) {
+        console.error("Error updating image:", error);
+      }
+    }
+    
+    console.log("Starting continuous image updates...");
+    // Fill first image immediately
+    updateImage();
+    
+    // Update image every second
+    const intervalId = setInterval(updateImage, 1000);
     
   } catch (error) {
     console.error("Camera client error:", error);
